@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "ais-pre-hf7agb2se74pg6hmo3ausk",
+          "region": "asia-southeast1"
+        }
+      }
+    ]
+  }
+}

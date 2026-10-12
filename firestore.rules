@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: Check if request is from verified Admin (Md kanchon Hossen)
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'mdkanchonhossen7@gmail.com' ||
+        request.auth.uid == 'admin_kanchon_master'
+      );
+    }
+
+    // Helper function: Check if user agreed to mandatory legal terms
+    function hasLegalAgreement(data) {
+      return data.legalAgreed == true;
+    }
+
+    // 1. System Config & Ad Manager (Strictly Read-Only for Public Web, Mutated only by Admin)
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 2. Directory Categories (Read-only for public)
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3. Directory Listings (Verified Police, Hospitals, Services, Daily Labor)
+    match /directory_items/{itemId} {
+      allow read: if true;
+      // Allow instant self-service posting ONLY if mandatory legal terms are checked
+      allow create: if request.resource.data.phone is string &&
+                       request.resource.data.title is string &&
+                       hasLegalAgreement(request.resource.data);
+      // Only Admin can update verified status, flag, or delete listings
+      allow update, delete: if isAdmin();
+    }
+
+    // 4. Tuition Matchmaking Posts (Two-way Teacher & Parent listings)
+    match /tuition_posts/{postId} {
+      allow read: if true;
+      allow create: if request.resource.data.phone is string &&
+                       request.resource.data.name is string &&
+                       hasLegalAgreement(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. Blood Donors & Urgent Blood Requests
+    match /blood_donors/{donorId} {
+      allow read: if true;
+      allow create: if request.resource.data.phone is string &&
+                       request.resource.data.bloodGroup is string;
+      allow update, delete: if isAdmin();
+    }
+
+    // 6. Job Circulars (Scraped & Admin Managed)
+    match /job_circulars/{jobId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 7. Live Chat Sessions & Agent Handover Messages
+    match /live_chats/{sessionId} {
+      allow read, write: if true; // Allows user chat polling & real-time human agent responses
+      
+      match /messages/{messageId} {
+        allow read, write: if true;
+      }
+    }
+
+    // 8. User Profiles & Gamified Contributor Leaderboard
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // 9. Analytics & Visitor Logs
+    match /analytics/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
